@@ -1,0 +1,3 @@
+[submodule "pymir3"]
+	path = pymir3
+	url = https://github.com/pymir3/pymir3
