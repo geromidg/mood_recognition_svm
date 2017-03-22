@@ -1,3 +1,11 @@
+"""
+.. module:: train_and_test
+   :platform: Unix, Windows
+   :synopsis: Contains methods to train and test on extracted features from an audio track.
+
+.. moduleauthor: Dimitris Geromichalos <geromidg@gmail.com>
+"""
+
 from warnings import simplefilter
 
 import numpy as np
@@ -12,6 +20,35 @@ from sklearn.model_selection import GridSearchCV, cross_val_score, cross_val_pre
 from sklearn.metrics import classification_report, confusion_matrix
 
 class TrainAndTest:
+    """
+    A class for training and testing on a dataset with extracted audio features.
+
+    It holds the input dataset in the form of a feature matrix.
+    The sklearn library is utilize for machine learning.
+    The training is done using a pipeline that consists of the feature selector and the classifier.
+    Hyperparameter optimization is done on the estimator with grid search on specific ranges.
+    The tessting if done using k-fold cross validation.
+
+    Args:
+        feature_matrix (FeatureMatrix): The input dataset from which the featues will be extracted.
+        sample_labels (List[str]): The labels of each track of the dataset.
+        num_processes (Optional[int]): The number of processes to be spawned. Defaults to 8.
+        folds (Optional[int]): The number of folds used in cross validation. Defaults to 10.
+
+    Attributes:
+        features (NumPy Array): The input dataset from which the featues will be extracted.
+        labels (NumPy Array): The labels of each track of the dataset.
+        num_processes (int): The number of processes to be spawned.
+        folds (int): The number of folds used in cross validation.
+        classifiers (Dict): The available classifiers (NB, KNN, SVM).
+        knn_n_neighbors (List[int]): The number of nearest neighbors for KNN (hyperparameter).
+        svm_gamma (List): The gamma's of SVM (hyperparameter).
+        svm_C (List): The C's of SVM (hyperparameter).
+        selector_transforms (List): The available selectors (ANOVA, PCA).
+        anova_percentiles (List): The percentiles of ANOVA (hyperparameter).
+        pca_n_components (List): The first components of PCA (hyperparameter).
+    """
+
     simplefilter('ignore')
 
     def __init__(self, feature_matrix, sample_labels, num_processes=8, folds=10):
@@ -23,7 +60,7 @@ class TrainAndTest:
         # Classifiers
         self.classifiers = {'nb': GaussianNB(), 'knn': KNeighborsClassifier(n_neighbors=1), 'svm': SVC(kernel='rbf', C=300)}
         
-        self.knn_n_neighbors = [1,3]
+        self.knn_n_neighbors = [1, 3]
 
         self.svm_gamma = [1e-3, 1e-4]
         self.svm_C = [10**-1, 1, 10, 100, 1000]
@@ -35,9 +72,25 @@ class TrainAndTest:
         self.pca_n_components = np.floor(np.linspace(1, self.features.shape[1], 10)).astype(int)
 
     def run(self):
+        """
+        Runs the train/test task using SVM with ANOVA.
+
+        The classifier and selector were chosen after yielding the best results after experiments.
+
+        Returns:
+            str: The report of the testing done.
+        """
+        
         return self.run_classifier_with_selector('svm', 'anova')
 
     def run_all(self):
+        """
+        Runs the train/test task using every combination of classifier/selector.
+
+        Returns:
+            str: The report of the testing done for each combination.
+        """
+        
         report_all = []
 
         report_all.append(self.run_classifier_with_selector('nb'))
@@ -55,6 +108,21 @@ class TrainAndTest:
         return report_all
 
     def run_classifier_with_selector(self, classifier_name, selector_name=None):
+        """
+        Runs the train/test task using the given classifier/selector.
+
+        First, a grid seach is done on the parameters of the pipeline (selector+classifier).
+        Then, the input training data are fit on the estimator.
+        Finally, k-fold cross validation is done on the resulting estimator.
+
+        Args:
+            classifier_name (str): The classifier to be used.
+            selector_name (str): The selector to be used. Defaults to None.
+
+        Returns:
+            str: The report of the testing done.
+        """
+        
         if selector_name in self.selector_transforms.keys():
             print 'Runnning %s with %s...' % (classifier_name.upper(), selector_name.upper())
         else:
@@ -98,6 +166,17 @@ class TrainAndTest:
         return self.get_total_report(classifier_name, scores, predicted, estimator, selector_name)
 
     def run_cross_validation(self, estimator):
+        """
+        Runs k-fold cross validation on the given estimator.
+
+        Args:
+            estimator (Estimator): The estimator to run cross validation with.
+
+        Returns:
+            NumPy Array: The scores of the cross validation.
+            NumPy Array: The predicted labels.
+        """
+        
         if hasattr(estimator, 'best_estimator_'):
             estimator = estimator.best_estimator_
 
@@ -108,6 +187,19 @@ class TrainAndTest:
 
     @staticmethod
     def accuracy_report(classifier_name, scores, estimator, selector_name=None):
+        """
+        Calculates the accuracy of the estimator from the cross validation.
+
+        Args:
+            classifier_name (str): The classifier's name.
+            scores (NumPy Array): The scores of the cross validation.
+            estimator (Estimator): The estimator used in the process.
+            selector_name (str): The selector's name. Defaults to None.
+
+        Returns:
+            str: The result of the cross validation.
+        """
+        
         report = '%s accuracy: %0.2f (+/- %0.2f)\n' % (classifier_name.upper(), scores.mean(), scores.std())
 
         if selector_name:
@@ -121,6 +213,17 @@ class TrainAndTest:
 
     @staticmethod
     def pretty_cm(labels, predicted):
+        """
+        Calculates and prettifies a confusion matrix from the true/predicted labels.
+
+        Args:
+            labels (NumPy Array): The true labels.
+            predicted (NumPy Array): The predicted labels.
+
+        Returns:
+            str: The prettified confusion matrix.
+        """
+        
         label_names = sorted([i for i in set(labels)])
 
         column_width = max([len(x) for x in label_names] + [5])
@@ -144,6 +247,22 @@ class TrainAndTest:
         return new_cm
 
     def get_total_report(self, classifier_name, scores, predicted, estimator, selector_name, verbose=False):
+        """
+        Gathers all the info from the process and reports back.
+
+        Args:
+            classifier_name (str): The classifier's name.
+            scores (NumPy Array): The scores of the cross validation.
+            predicted (NumPy Array): The predicted labels.
+            estimator (Estimator): The estimator used in the process.
+            selector_name (str): The classifier's name.
+            verbose (bool): Whether to print with detail. Defaults to False.
+
+
+        Returns:
+            str: The final report.
+        """
+        
         if verbose:
             total_report = '\n'
             total_report += self.accuracy_report(classifier_name, scores, estimator, selector_name)

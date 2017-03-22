@@ -1,3 +1,11 @@
+"""
+.. module:: extract_features
+   :platform: Unix, Windows
+   :synopsis: Contains methods to extract spectral bandwise features from an audio track.
+
+.. moduleauthor: Dimitris Geromichalos <geromidg@gmail.com>
+"""
+
 from os.path import exists
 from copy import copy
 import numpy as np
@@ -10,6 +18,27 @@ from mir3.modules.tool import to_texture_window
 from mir3.data.feature_track import FeatureTrack
 
 class ExtractFeatures:
+    """
+    A class for processing a dataset and extracting audio features.
+
+    It holds the input dataset and contains methods for processing it,
+    by interfacing with the mir3 package of the pymi3 library.
+
+    Args:
+        dataset (List[str]): The input dataset from which the featues will be extracted.
+        num_bands (Optional[int]): The number of spectral bands to operate on. Defaults to 50.
+        num_processes (Optional[int]): The number of processes to be spawned. Defaults to 8.
+        enable_load (Optional[bool]): Whether to load serialized features. Defaults to True.
+        enable_save (Optional[bool]): Whether to serialized features after extracting them. Defaults to True.
+
+    Attributes:
+        dataset (List[str]): The input dataset from which the featues will be extracted.
+        num_bands (int): The number of spectral bands to operate on.
+        num_processes (int): The number of processes to be spawned.
+        enable_load (bool): Whether to load serialized features.
+        enable_save (bool): Whether to serialized features after extracting them.
+    """
+
     def __init__(self, dataset, num_bands=50, num_processes=8, enable_load=True, enable_save=True):
         self.dataset = dataset
         self.num_bands = num_bands
@@ -19,6 +48,15 @@ class ExtractFeatures:
         self.enable_save = enable_save
 
     def run(self):
+        """
+        Runs the feature extraction on the input dataset.
+
+        The extraction consists of a 3-stage pipeline. The first 2 steps are computed in parallel.
+        First, the bandwise features are extracted from all the audio tracks of the dataset.
+        Then, all the features are converted to texture windows that contain statistics of groups frames.
+        Finally, a feature matrix that holds all the texture windows and their features is created.
+        """
+
         print 'Running feature extraction...'
 
         print 'Extracting feature tracks...'
@@ -33,6 +71,16 @@ class ExtractFeatures:
         return feature_matrix
 
     def extract_feature_track(self, filename):
+        """
+        Extracts a feature track from an audio file.
+
+        Args:
+            filename (str): The path of the audio file.
+
+        Returns:
+            FeatureTrack: The extracted feature track.
+        """
+
         print 'Extracting feature track from %s...' % (filename)
 
         feature_track = None
@@ -51,12 +99,33 @@ class ExtractFeatures:
         return feature_track
 
     def extract_texture_window(self, feature_track):
+        """
+        Extract a texture window from a feature track.
+
+        Args:
+            feature_track (FeatureTrack): The input feature track.
+
+        Returns:
+            TextureWindow: The extracted texture window.
+        """
+        
         texture_window = to_texture_window.ToTextureWindow().to_texture(feature_track, 100)
 
         return texture_window
 
     @staticmethod
     def get_mel_bands(spectrogram, num_bands):
+        """
+        Splits a spectrogram to a number of bands.
+
+        Args:
+            spectrogram (Spectrogram): The input spectrogram.
+            num_bands (int): The number of the bands to be split.
+
+        Returns:
+            List[Tuple(int, int)]: The frequencies of the split bands.
+        """
+        
         def mel_to_hz(mel):
             return 700 * (10**(float(mel) / 2595) - 1)
         def hz_to_mel(hz):
@@ -77,6 +146,17 @@ class ExtractFeatures:
 
     @staticmethod
     def calculate_features_per_band(spectrogram, bands):
+        """
+        Calculates the features for every band of a spectrogram.
+
+        Args:
+            spectrogram (Spectrogram): The input spectrogram.
+            bands (List[Tuple(int, int)]): The split bands of the spectrogram.
+
+        Returns:
+            NumPy Array: An array containing all the frames and their features.
+        """
+        
         band_features = np.array([])
         
         for band in bands:
@@ -103,6 +183,16 @@ class ExtractFeatures:
 
     @staticmethod
     def join_bands_features(band_features):
+        """
+        Joins all the features from all the bands to a feature track.
+
+        Args:
+            band_features (NumPy Array): An array containing all the frames and their features.
+
+        Returns:
+            FeatureTrack: The feature track containing the joined features for each frame.
+        """
+        
         min_dim = np.min([x.data.shape for x in band_features])
         features = []
         for feature in band_features:
@@ -121,6 +211,21 @@ class ExtractFeatures:
 
     @classmethod
     def extract_bandwise_features(cls, filename, num_bands):
+        """
+        Extract the bandwise featues of an audio track.
+
+        First, the audio track (wav file) is converted to a spectrogram.
+        Then, from the spectrogram the features for each band are calculated.
+        Finally, the features are nicely joined into a feature track.
+
+        Args:
+            filename (str): The input audio track.
+            num_bands (int): The number of bands to split the spectrogram.
+
+        Returns:
+            FeatureTrack: The feature track containing the joined features for each frame.
+        """
+        
         wav_file = open(filename, 'rb')
         spectrogram = wav2spectrogram.Wav2Spectrogram().convert(wav_file, \
             dft_length=2048, window_step=1024, window_length=2048)
