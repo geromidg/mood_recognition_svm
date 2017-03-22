@@ -1,10 +1,8 @@
 Mirto
 =====
 
-Mirto is an audio classification framework.
-It can be used to classify audio tracks by genre, composer or mood.
-The implementation aims to solve the equivalent MIREX tasks.
+Mirto is an audio classification application, aimed to solve the equivalent MIREX tasks. It can be used to classify audio tracks by genre, composer or mood.
 
 It utilizes the following libraries:
-1. pymir3: bandwise feature extraction
+1. pymir3: feature extraction
 2. sklearn: feature selection, training and testing
