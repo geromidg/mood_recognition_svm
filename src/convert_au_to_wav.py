@@ -1,10 +1,25 @@
 #!/usr/bin/env python
 
+"""
+.. module:: convert_au_to_wav
+   :platform: Unix, Windows
+   :synopsis: Contains a function for converting .au tracks to .wav.
+
+.. moduleauthor: Dimitris Geromichalos <geromidg@gmail.com>
+"""
+
 from sys import argv
 from glob import glob
 from scikits import audiolab
 
 def convert_au_to_wav(filename):
+    """
+    A function for converting audio tracks from .au to .wav.
+
+    Args:
+        filename (str): The path of the file to be converted.
+    """
+    
 	au_file = audiolab.sndfile(filename, 'read')
 
 	fmt = audiolab.formatinfo('wav', au_file.get_encoding())
